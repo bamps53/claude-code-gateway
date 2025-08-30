@@ -1,5 +1,6 @@
 import hashlib
 import json
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
@@ -367,6 +368,17 @@ async def get_log_content(path: str):
         log_data = json.load(f)
 
     return log_data
+
+
+@app.delete("/viewer/api/sessions/{user_id}/{session_folder}", include_in_schema=False)
+async def delete_session(user_id: str, session_folder: str):
+    """Delete a specific session and all its log files."""
+    session_dir = app.state.logs_dir / user_id / session_folder
+    if not session_dir.exists() or not session_dir.is_dir():
+        return Response(status_code=404, content="Session not found")
+
+    shutil.rmtree(session_dir)
+    return {"success": True, "message": "Session deleted successfully"}
 
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])

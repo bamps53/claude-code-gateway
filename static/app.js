@@ -54,9 +54,24 @@ document.addEventListener("DOMContentLoaded", () => {
                     sessionDiv.className = "log-session-group";
                     
                     const sessionHeader = document.createElement("h4");
-                    sessionHeader.textContent = `Session: ${sessionId}`;
                     sessionHeader.className = "log-session-header collapsed";
-                    sessionHeader.addEventListener("click", () => toggleSessionGroup(sessionDiv));
+                    
+                    const sessionText = document.createElement("span");
+                    sessionText.textContent = `Session: ${sessionId}`;
+                    sessionText.className = "session-text";
+                    sessionText.addEventListener("click", () => toggleSessionGroup(sessionDiv));
+                    
+                    const deleteButton = document.createElement("button");
+                    deleteButton.innerHTML = "🗑️";
+                    deleteButton.className = "delete-session-button";
+                    deleteButton.title = "セッションを削除";
+                    deleteButton.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        deleteSession(userId, sessionId, sessionDiv);
+                    });
+                    
+                    sessionHeader.appendChild(sessionText);
+                    sessionHeader.appendChild(deleteButton);
                     sessionDiv.appendChild(sessionHeader);
                     
                     const fileList = document.createElement("div");
@@ -290,6 +305,61 @@ document.addEventListener("DOMContentLoaded", () => {
         fetchLogs();
     });
 
+    // セッション削除機能
+    async function deleteSession(userId, sessionId, sessionDiv) {
+        if (!confirm('このセッションを削除しますか？この操作は取り消せません。')) {
+            return;
+        }
+        
+        // sessionIdから実際のフォルダ名を特定する必要がある
+        // フォルダ名は "timestamp_sessionId" の形式
+        const sessionFolders = sessionDiv.parentElement.querySelectorAll('.log-session-group');
+        let sessionFolder = null;
+        
+        // 現在のsessionDivに対応するフォルダ名を特定
+        // session headerからsessionIdを抽出し、ログファイルのパスから実際のフォルダ名を取得
+        const fileLinks = sessionDiv.querySelectorAll('.log-file-list a');
+        if (fileLinks.length > 0) {
+            const firstFilePath = fileLinks[0].dataset.path;
+            const pathParts = firstFilePath.split('/');
+            if (pathParts.length >= 2) {
+                sessionFolder = pathParts[1]; // userId/sessionFolder/filename.json の形式
+            }
+        }
+        
+        if (!sessionFolder) {
+            alert('セッションの削除に失敗しました。フォルダが見つかりません。');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/viewer/api/sessions/${userId}/${sessionFolder}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                // UIからセッションを削除
+                sessionDiv.remove();
+                
+                // もしアクティブなログがこのセッションのものだった場合、チャットコンテナをクリア
+                if (activeLog && fileLinks.length > 0) {
+                    const activeLogPath = activeLog.dataset.path;
+                    const sessionPaths = Array.from(fileLinks).map(link => link.dataset.path);
+                    if (sessionPaths.includes(activeLogPath)) {
+                        chatContainer.innerHTML = '<div class="welcome-message">Select a log from the left sidebar to view the conversation.</div>';
+                        activeLog = null;
+                    }
+                }
+            } else {
+                const errorData = await response.text();
+                alert('セッションの削除に失敗しました: ' + errorData);
+            }
+        } catch (error) {
+            console.error('Error deleting session:', error);
+            alert('セッションの削除中にエラーが発生しました。');
+        }
+    }
+
     fetchLogs();
 });
 
@@ -340,4 +410,5 @@ function toggleCollapsible(sectionId) {
         arrow.textContent = '▶';
     }
 }
+
 
