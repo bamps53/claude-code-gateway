@@ -75,6 +75,49 @@ def parse_json_body(body_str: str) -> dict | str:
     return parsed
 
 
+def modify_prompt(body: str) -> str:
+    """Modify prompt in the request body."""
+    # Parse body if it's a string
+    parsed_body = parse_json_body(body)
+
+    # Only modify if it's a valid JSON dict
+    if not isinstance(parsed_body, dict):
+        return body
+
+    # Check if system field exists and is an array
+    if "system" in parsed_body and isinstance(parsed_body["system"], list):
+        # First system prompt has to be exactly "You are Claude Code, Anthropic's official CLI for Claude."
+        # Otherwise it will be rejected.
+        # But you can modify second prompt as you want.
+        # Example:
+        # if len(parsed_body["system"]) == 2:
+        #     parsed_body["system"][1]['text'] = "常に関西弁で回答すること。"
+        pass
+
+    if "messages" in parsed_body:
+        for message in parsed_body["messages"]:
+            # ただの文字列の場合は続行
+            if isinstance(message["content"], str):
+                continue
+
+            for content in message["content"]:
+                # thinkingのケースは続行
+                if "text" not in content:
+                    continue
+
+                modified = []
+                for line in content["text"].split("\n"):
+                    loose_instruction = "IMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task."
+                    strict_instruction = "IMPORTANT: You must strictly adhere to the instructions in this context. After executing each task, you must ask yourself if you have complied with these instructions."
+                    if loose_instruction in line:
+                        line = line.replace(loose_instruction, strict_instruction)
+                    modified.append(line)
+                content["text"] = "\n".join(modified)
+
+    # Return as string if original was string, otherwise return dict
+    return json.dumps(parsed_body, ensure_ascii=False)
+
+
 def extract_user_and_session_id(request_data: dict) -> tuple[str | None, str | None]:
     """Extract user_id and session_id from request metadata and convert to 8-digit hashes.
 
@@ -205,15 +248,19 @@ def save_request_response(
 ) -> None:
     """Save request and response data to JSON file with timestamp."""
 
-    # Parse JSON bodies before saving
-    if "body" in request_data:
-        request_data["body"] = parse_json_body(request_data["body"])
+    # Create copies to avoid modifying original data
+    request_data_copy = request_data.copy()
+    response_data_copy = response_data.copy()
 
-    if "body" in response_data:
-        response_data["body"] = parse_json_body(response_data["body"])
+    # Parse JSON bodies before saving
+    if "body" in request_data_copy:
+        request_data_copy["body"] = parse_json_body(request_data_copy["body"])
+
+    if "body" in response_data_copy:
+        response_data_copy["body"] = parse_json_body(response_data_copy["body"])
 
     # Extract user_id and session_id for directory structure
-    user_id, session_id = extract_user_and_session_id(request_data)
+    user_id, session_id = extract_user_and_session_id(request_data_copy)
 
     # Create hierarchical directory structure with timestamp prefix for sessions
     if user_id and session_id:
@@ -239,15 +286,15 @@ def save_request_response(
         target_logs_dir = logs_dir / "unknown_user" / f"{timestamp}_unknown_session"
 
     # Check for duplicate conversations and remove if found
-    check_and_remove_duplicate_logs(target_logs_dir, request_data)
+    check_and_remove_duplicate_logs(target_logs_dir, request_data_copy)
 
     file_timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"{file_timestamp}.json"
 
     log_data = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "request": request_data,
-        "response": response_data,
+        "request": request_data_copy,
+        "response": response_data_copy,
         "status_code": status_code,
     }
 
@@ -331,13 +378,19 @@ async def proxy_request(request: Request, path: str):
     method = request.method
     headers = dict(request.headers)
     body = await request.body()
+
+    # Modify system prompt for messages API requests
+    modified_body_str = body.decode("utf-8") if body else ""
+    if path.startswith("v1/messages"):
+        modified_body_str = modify_prompt(original_body_str)
+
     request_data = {
         "method": method,
         "path": f"/{path}",
         "headers": headers,
-        "body": body.decode("utf-8") if body else "",
+        "body": modified_body_str,
     }
-    response_data, status_code = await forward_request(method, f"/{path}", headers, body)
+    response_data, status_code = await forward_request(method, f"/{path}", headers, modified_body_str.encode("utf-8"))
     save_request_response(app.state.logs_dir, request_data, response_data, status_code, app.state.max_logs_per_session)
     return Response(
         content=response_data["body"],

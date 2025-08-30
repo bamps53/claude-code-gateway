@@ -11,7 +11,9 @@
         "--context",
         "ide-assistant",
         "--enable-web-dashboard",
-        "false"
+        "false",
+        "--project",
+        "claude-code-gateway"
       ],
       "env": {}
     },

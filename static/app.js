@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             
             // 階層構造でHTML生成
-            Object.keys(logGroups).sort().forEach(userId => {
+            Object.keys(logGroups).sort().reverse().forEach(userId => {
                 const userDiv = document.createElement("div");
                 userDiv.className = "log-user-group";
                 
@@ -49,18 +49,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 const userSessionsContainer = document.createElement("div");
                 userSessionsContainer.className = "log-user-sessions";
                 
-                Object.keys(logGroups[userId]).sort().forEach(sessionId => {
+                Object.keys(logGroups[userId]).sort().reverse().forEach(sessionId => {
                     const sessionDiv = document.createElement("div");
                     sessionDiv.className = "log-session-group";
                     
                     const sessionHeader = document.createElement("h4");
                     sessionHeader.textContent = `Session: ${sessionId}`;
-                    sessionHeader.className = "log-session-header";
+                    sessionHeader.className = "log-session-header collapsed";
                     sessionHeader.addEventListener("click", () => toggleSessionGroup(sessionDiv));
                     sessionDiv.appendChild(sessionHeader);
                     
                     const fileList = document.createElement("div");
-                    fileList.className = "log-file-list";
+                    fileList.className = "log-file-list collapsed";
                     
                     logGroups[userId][sessionId].forEach(log => {
                         const link = document.createElement("a");
@@ -283,6 +283,12 @@ document.addEventListener("DOMContentLoaded", () => {
             chatContainer.innerHTML = `<div class="welcome-message error">Failed to load log file.</div>`;
         }
     }
+
+    // 更新ボタンのイベントリスナー
+    const refreshButton = document.getElementById("refresh-logs");
+    refreshButton.addEventListener("click", () => {
+        fetchLogs();
+    });
 
     fetchLogs();
 });

@@ -45,9 +45,33 @@ body {
     padding: 1rem;
     overflow-y: auto;
 }
+.logs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
 .sidebar h1 {
     font-size: 1.5rem;
-    margin: 0 0 1rem;
+    margin: 0;
+}
+
+.refresh-button {
+    background: none;
+    border: none;
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+
+.refresh-button:hover {
+    background-color: var(--bg-assistant-message);
+    color: var(--text-dark);
+    border-color: var(--border-secondary);
 }
 .log-user-group {
     margin-bottom: 1.5rem;
@@ -155,7 +179,7 @@ body {
     overflow-y: auto;
 }
 #chat-container {
-    max-width: 800px;
+    max-width: 1200px;
     margin: 0 auto;
 }
 .welcome-message {
@@ -170,7 +194,6 @@ body {
     padding: 0.8rem 1.2rem;
     border-radius: 1.25rem;
     margin-bottom: 0.75rem;
-    max-width: 90%;
     line-height: 1.5;
     word-wrap: break-word;
     display: flex;
@@ -184,22 +207,27 @@ body {
     background-color: var(--bg-user-message);
     color: var(--text-light);
     margin-left: auto;
+    margin-right: 1rem;
     align-self: flex-end;
+    max-width: 75%;
 }
 .assistant {
     background-color: var(--bg-assistant-message);
     color: var(--text-dark);
     margin-right: auto;
+    margin-left: 1rem;
     align-self: flex-start;
+    max-width: 75%;
 }
 .tool { /* For tool_result messages */
     background-color: var(--bg-tool-message);
     border: 1px solid var(--border-secondary);
     color: var(--text-muted);
-    margin: 0.5rem auto;
-    align-self: center;
-    width: 100%;
-    max-width: 100%;
+    margin-left: auto;
+    margin-right: 1rem;
+    margin-bottom: 0.75rem;
+    align-self: flex-end;
+    max-width: 75%;
     font-size: 0.9rem;
     box-sizing: border-box;
 }
@@ -304,6 +332,13 @@ pre {
     border-radius: 8px;
     overflow-x: auto;
     font-size: 0.9rem;
+}
+
+/* Tool Result内のpreは折り返し表示 */
+.tool-result pre {
+    overflow-x: visible;
+    white-space: pre-wrap;
+    word-break: break-all;
 }
 .message > pre {
     margin: 0.5rem 0;
