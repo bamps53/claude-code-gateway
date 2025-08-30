@@ -122,7 +122,9 @@ document.addEventListener("DOMContentLoaded", () => {
             // Check URL hash on initial load
             if (window.location.hash) {
                 const path = window.location.hash.substring(1);
-                if (logs.some(log => log.path === path || log.filename === path)) {
+                // Always try to load the path, even if it doesn't exist in the logs list
+                // The backend will handle redirecting to the latest file in the session
+                if (path) {
                     loadLog(path);
                 }
             }
@@ -146,6 +148,30 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const response = await fetch(`/viewer/api/logs/${path}`);
             if (!response.ok) throw new Error(`Failed to fetch log: ${path}`);
+            
+            // Check if we were redirected to a different path
+            const requestedUrl = `/viewer/api/logs/${path}`;
+            const finalUrl = response.url;
+            
+            if (finalUrl !== `${window.location.origin}${requestedUrl}`) {
+                // Extract the new path from the redirected URL
+                const urlMatch = finalUrl.match(/\/viewer\/api\/logs\/(.+)$/);
+                if (urlMatch) {
+                    const newPath = urlMatch[1];
+                    // Update the browser hash to reflect the redirect
+                    window.location.hash = newPath;
+                    // Also update the active log highlighting for the redirected path
+                    if (activeLog) {
+                        activeLog.classList.remove("active");
+                    }
+                    const redirectedActiveLog = logList.querySelector(`a[data-path="${newPath}"]`);
+                    if (redirectedActiveLog) {
+                        redirectedActiveLog.classList.add("active");
+                        activeLog = redirectedActiveLog;
+                    }
+                }
+            }
+            
             const data = await response.json();
             
             chatContainer.innerHTML = ""; // Clear container

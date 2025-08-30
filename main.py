@@ -9,6 +9,7 @@ import aiohttp
 import typer
 import uvicorn
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -357,11 +358,61 @@ async def get_logs_list():
     return sorted(log_files, key=lambda x: x["filename"], reverse=True)
 
 
+def find_latest_json_in_session(requested_path: str, logs_dir: Path) -> str | None:
+    """Find the latest JSON file in the same session when the requested file is not found.
+    
+    Args:
+        requested_path: The originally requested path (e.g., "user_hash/session_dir/file.json")
+        logs_dir: The base logs directory
+    
+    Returns:
+        Relative path to the latest JSON file in the same session, or None if not found
+    """
+    path_parts = requested_path.split("/")
+    if len(path_parts) < 3:
+        return None
+    
+    user_hash = path_parts[0]
+    session_dir = path_parts[1]
+    
+    # Find the user directory
+    user_dir = logs_dir / user_hash
+    if not user_dir.exists():
+        return None
+    
+    # Find the session directory that matches the pattern
+    target_session_dir = None
+    for existing_dir in user_dir.iterdir():
+        if existing_dir.is_dir() and existing_dir.name == session_dir:
+            target_session_dir = existing_dir
+            break
+    
+    if not target_session_dir:
+        return None
+    
+    # Find all JSON files in the session directory
+    json_files = list(target_session_dir.glob("*.json"))
+    if not json_files:
+        return None
+    
+    # Sort by filename (which includes timestamp) and get the latest
+    json_files.sort(key=lambda x: x.name, reverse=True)
+    latest_file = json_files[0]
+    
+    # Return relative path from logs_dir
+    return str(latest_file.relative_to(logs_dir))
+
+
 @app.get("/viewer/api/logs/{path:path}", include_in_schema=False)
 async def get_log_content(path: str):
     """Get the content of a specific log file."""
     log_file = app.state.logs_dir / path
     if not log_file.exists():
+        # Try to find the latest JSON file in the same session
+        latest_file_path = find_latest_json_in_session(path, app.state.logs_dir)
+        if latest_file_path:
+            # Redirect to the latest file
+            return RedirectResponse(url=f"/viewer/api/logs/{latest_file_path}", status_code=302)
         return Response(status_code=404, content="Log not found")
 
     with open(log_file, "r", encoding="utf-8") as f:
