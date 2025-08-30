@@ -25,49 +25,51 @@ def parse_streaming_response(sse_body: str) -> str:
     """Extract and concatenate text content from Server-Sent Events streaming response."""
     if not sse_body or not sse_body.strip():
         return sse_body
-    
+
     text_parts = []
-    lines = sse_body.strip().split('\n')
-    
+    lines = sse_body.strip().split("\n")
+
     for line in lines:
-        if line.startswith('data: '):
+        if line.startswith("data: "):
             try:
                 data_content = line[6:]  # Remove "data: " prefix
-                if data_content.strip() == '':
+                if data_content.strip() == "":
                     continue
-                    
+
                 data = json.loads(data_content)
-                
+
                 # Extract text from content_block_delta events
-                if (data.get('type') == 'content_block_delta' and 
-                    'delta' in data and 
-                    data['delta'].get('type') == 'text_delta'):
-                    text_parts.append(data['delta']['text'])
-                    
+                if (
+                    data.get("type") == "content_block_delta"
+                    and "delta" in data
+                    and data["delta"].get("type") == "text_delta"
+                ):
+                    text_parts.append(data["delta"]["text"])
+
             except json.JSONDecodeError:
                 print("Failed:", line)
                 continue
-    
+
     # Return concatenated text if we found any, otherwise return original
-    return ''.join(text_parts) if text_parts else sse_body
+    return "".join(text_parts) if text_parts else sse_body
 
 
 def parse_json_body(body_str: str) -> dict | str:
     """Parse JSON body string, return parsed object or original string if invalid JSON."""
     if not body_str or not body_str.strip():
         return body_str
-    
+
     stripped = body_str.strip()
-    
+
     # SSE format detection (starts with "event:")
-    if stripped.startswith('event:'):
+    if stripped.startswith("event:"):
         # return parse_streaming_response(body_str)
         return body_str
-    
+
     # Check if it looks like JSON (starts with { or [)
-    if not (stripped.startswith('{') or stripped.startswith('[')):
+    if not (stripped.startswith("{") or stripped.startswith("[")):
         return body_str
-    
+
     # Attempt to parse JSON
     parsed = json.loads(body_str)
     return parsed
@@ -75,51 +77,51 @@ def parse_json_body(body_str: str) -> dict | str:
 
 def extract_user_and_session_id(request_data: dict) -> tuple[str | None, str | None]:
     """Extract user_id and session_id from request metadata and convert to 8-digit hashes.
-    
+
     Returns:
         tuple: (user_id_hash, session_id_hash) or (None, None) if not found
     """
     body = request_data.get("body")
     if not body:
         return None, None
-    
+
     # Parse body if it's a string
     if isinstance(body, str):
         body = parse_json_body(body)
-    
+
     # Extract metadata
     if not isinstance(body, dict) or "metadata" not in body:
         return None, None
-    
+
     metadata = body["metadata"]
     if not isinstance(metadata, dict) or "user_id" not in metadata:
         return None, None
-    
+
     full_user_id = metadata["user_id"]
-    
+
     # Parse user_id format: user_{hash}_account_{uuid}_session_{uuid}
     if not full_user_id.startswith("user_"):
         return None, None
-    
+
     # Extract user part (user_{hash})
     parts = full_user_id.split("_")
     if len(parts) < 2:
         return None, None
-    
+
     user_part = "_".join(parts[:2])  # user_xxxxx
-    
+
     # Create 8-digit hash from user part
     user_id_hash = hashlib.md5(user_part.encode()).hexdigest()[:8]
-    
+
     # Extract session ID
     if "session_" not in full_user_id:
         return user_id_hash, None
-    
+
     session_id = full_user_id.split("session_")[1]
-    
+
     # Create 8-digit hash from session ID
     session_id_hash = hashlib.md5(session_id.encode()).hexdigest()[:8]
-    
+
     return user_id_hash, session_id_hash
 
 
@@ -127,58 +129,59 @@ def check_and_remove_duplicate_logs(logs_dir: Path, current_request_data: dict) 
     """Check if current request is a superset of the most recent log and remove duplicate if found."""
     if not logs_dir.exists():
         return
-    
+
     # Get all log files sorted by timestamp (most recent first)
     log_files = sorted(logs_dir.glob("*.json"), key=lambda f: f.name, reverse=True)
-    
+
     if len(log_files) < 1:
         return
-    
+
     # Get the most recent log file
     latest_log_file = log_files[0]
-    
+
     # Read the latest log file
     with open(latest_log_file, "r", encoding="utf-8") as f:
         latest_log_data = json.load(f)
-    
+
     # Extract request bodies for comparison
     current_body = current_request_data.get("body")
     latest_body = latest_log_data.get("request", {}).get("body")
-    
+
     # Only compare if both bodies exist and are for the same API endpoint
     if not (current_body and latest_body):
         return
-    
+
     current_path = current_request_data.get("path", "")
     latest_path = latest_log_data.get("request", {}).get("path", "")
-    
+
     if current_path != latest_path:
         return
-    
+
     # Parse both bodies if they're JSON strings
     if isinstance(current_body, str):
         current_body = parse_json_body(current_body)
     if isinstance(latest_body, str):
         latest_body = parse_json_body(latest_body)
-    
+
     # Only compare conversation messages for /v1/messages endpoints
     if not current_path.startswith("/v1/messages"):
         return
-    
+
     # Extract messages from both requests
     current_messages = []
     latest_messages = []
-    
+
     if isinstance(current_body, dict) and "messages" in current_body:
         current_messages = current_body["messages"]
     if isinstance(latest_body, dict) and "messages" in latest_body:
         latest_messages = latest_body["messages"]
-    
+
     # Check if current conversation is a superset of latest conversation
-    if (len(current_messages) > len(latest_messages) and 
-        len(latest_messages) > 0 and
-        current_messages[:len(latest_messages)] == latest_messages):
-        
+    if (
+        len(current_messages) > len(latest_messages)
+        and len(latest_messages) > 0
+        and current_messages[: len(latest_messages)] == latest_messages
+    ):
         # Current conversation contains all of the previous conversation plus more
         # Remove the previous log file
         latest_log_file.unlink()
@@ -188,28 +191,30 @@ def limit_session_logs(session_dir: Path, max_logs: int) -> None:
     """Remove oldest log files if session exceeds max_logs limit."""
     if not session_dir.exists():
         return
-    
+
     log_files = sorted(session_dir.glob("*.json"), key=lambda f: f.name)
-    
+
     if len(log_files) >= max_logs:
-        files_to_remove = log_files[:len(log_files) - max_logs + 1]
+        files_to_remove = log_files[: len(log_files) - max_logs + 1]
         for file_to_remove in files_to_remove:
             file_to_remove.unlink()
 
 
-def save_request_response(logs_dir: Path, request_data: dict, response_data: dict, status_code: int, max_logs_per_session: int) -> None:
+def save_request_response(
+    logs_dir: Path, request_data: dict, response_data: dict, status_code: int, max_logs_per_session: int
+) -> None:
     """Save request and response data to JSON file with timestamp."""
-    
+
     # Parse JSON bodies before saving
     if "body" in request_data:
         request_data["body"] = parse_json_body(request_data["body"])
-    
+
     if "body" in response_data:
         response_data["body"] = parse_json_body(response_data["body"])
-    
+
     # Extract user_id and session_id for directory structure
     user_id, session_id = extract_user_and_session_id(request_data)
-    
+
     # Create hierarchical directory structure with timestamp prefix for sessions
     if user_id and session_id:
         user_dir = logs_dir / user_id
@@ -220,7 +225,7 @@ def save_request_response(logs_dir: Path, request_data: dict, response_data: dic
                 if existing_dir.is_dir() and existing_dir.name.endswith(f"_{session_id}"):
                     existing_session_dir = existing_dir
                     break
-        
+
         if existing_session_dir:
             target_logs_dir = existing_session_dir
         else:
@@ -232,10 +237,10 @@ def save_request_response(logs_dir: Path, request_data: dict, response_data: dic
     else:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         target_logs_dir = logs_dir / "unknown_user" / f"{timestamp}_unknown_session"
-    
+
     # Check for duplicate conversations and remove if found
     check_and_remove_duplicate_logs(target_logs_dir, request_data)
-    
+
     file_timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"{file_timestamp}.json"
 
@@ -252,7 +257,7 @@ def save_request_response(logs_dir: Path, request_data: dict, response_data: dic
     log_file = target_logs_dir / filename
     with open(log_file, "w", encoding="utf-8") as f:
         json.dump(log_data, f, indent=2, ensure_ascii=False)
-    
+
     # Limit the number of log files in this session
     limit_session_logs(target_logs_dir, max_logs_per_session)
 
@@ -292,10 +297,14 @@ async def get_logs_list():
     for f in logs_dir.rglob("*.json"):
         with open(f, "r", encoding="utf-8") as log_file:
             data = json.load(log_file)
-            if ("timestamp" in data and 
-                data.get("request", {}).get("path", "").startswith("/v1/") and
-                data.get("request", {}).get("body", "")):
-                log_files.append({"filename": f.name, "timestamp": data["timestamp"], "path": str(f.relative_to(logs_dir))})
+            if (
+                "timestamp" in data
+                and data.get("request", {}).get("path", "").startswith("/v1/")
+                and data.get("request", {}).get("body", "")
+            ):
+                log_files.append(
+                    {"filename": f.name, "timestamp": data["timestamp"], "path": str(f.relative_to(logs_dir))}
+                )
 
     return sorted(log_files, key=lambda x: x["filename"], reverse=True)
 
@@ -344,7 +353,9 @@ async def proxy_request(request: Request, path: str):
 def main(
     port: Annotated[int, typer.Option("--port", "-p", help="Port to run the server on")] = 8000,
     log_dir: Annotated[str, typer.Option("--log-dir", "-l", help="Directory to save log files")] = "logs",
-    max_logs_per_session: Annotated[int, typer.Option("--max-logs-per-session", "-m", help="Maximum number of logs to keep per session")] = 5,
+    max_logs_per_session: Annotated[
+        int, typer.Option("--max-logs-per-session", "-m", help="Maximum number of logs to keep per session")
+    ] = 5,
 ) -> None:
     """
     Claude Code Gateway - A FastAPI proxy server for logging Anthropic API requests.
