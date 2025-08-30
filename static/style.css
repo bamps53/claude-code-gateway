@@ -254,28 +254,6 @@ body {
     font-family: var(--font-mono);
 }
 
-.tool-expand-btn {
-    background: none;
-    border: none;
-    color: #2c5282;
-    cursor: pointer;
-    font-size: 0.8rem;
-    margin-top: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    transition: background-color 0.2s ease;
-    font-family: var(--font-sans);
-}
-
-.tool-expand-btn:hover {
-    background-color: rgba(44, 82, 130, 0.1);
-    text-decoration: underline;
-}
-
-.tool-desc-preview,
-.tool-desc-full {
-    margin-bottom: 0.5rem;
-}
 
 /* Tool-specific styling */
 .tool-call {
@@ -368,9 +346,7 @@ pre {
 }
 
 .collapsible-content {
-    overflow: hidden;
-    transition: max-height 0.3s ease, opacity 0.3s ease;
-    max-height: 1000px;
+    transition: all 0.3s ease;
     opacity: 1;
 }
 
@@ -379,4 +355,5 @@ pre {
     opacity: 0;
     margin: 0;
     padding: 0;
+    overflow: hidden;
 }

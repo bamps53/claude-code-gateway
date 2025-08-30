@@ -177,32 +177,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     toolsHtml += `<div class="tool-item">`;
                     toolsHtml += `<div class="tool-header">${index + 1}. <strong>${tool.name}</strong></div>`;
                     if (tool.description) {
-                        // 改行を<br>に変換
-                        const lines = tool.description.split('\n');
-                        const previewLines = 5;
-                        
-                        if (lines.length > previewLines) {
-                            // 長い説明の場合：折りたたみ機能付き
-                            const previewDescription = lines.slice(0, previewLines).join('<br>');
-                            const fullDescription = lines.join('<br>');
-                            const toolId = `tool-${index}`;
-                            
-                            toolsHtml += `<div class="tool-description">
-                                <div class="tool-desc-preview" id="${toolId}-preview">
-                                    ${previewDescription}
-                                </div>
-                                <div class="tool-desc-full" id="${toolId}-full" style="display: none;">
-                                    ${fullDescription}
-                                </div>
-                                <button class="tool-expand-btn" onclick="toggleToolDescription('${toolId}')" id="${toolId}-btn">
-                                    Show more (${lines.length - previewLines} more lines)
-                                </button>
-                            </div>`;
-                        } else {
-                            // 短い説明の場合：そのまま表示
-                            const description = lines.join('<br>');
-                            toolsHtml += `<div class="tool-description">${description}</div>`;
-                        }
+                        // 改行を<br>に変換してそのまま表示
+                        const description = tool.description.split('\n').join('<br>');
+                        toolsHtml += `<div class="tool-description">${description}</div>`;
                     }
                     toolsHtml += `</div>`;
                 });
@@ -358,23 +335,3 @@ function toggleCollapsible(sectionId) {
     }
 }
 
-// Tools説明の展開/折りたたみ機能
-function toggleToolDescription(toolId) {
-    const preview = document.getElementById(`${toolId}-preview`);
-    const full = document.getElementById(`${toolId}-full`);
-    const btn = document.getElementById(`${toolId}-btn`);
-    
-    if (full.style.display === 'none') {
-        // 展開
-        preview.style.display = 'none';
-        full.style.display = 'block';
-        btn.textContent = 'Show less';
-    } else {
-        // 折りたたみ
-        preview.style.display = 'block';
-        full.style.display = 'none';
-        const previewLineCount = preview.innerHTML.split('<br>').length;
-        const fullLineCount = full.innerHTML.split('<br>').length;
-        btn.textContent = `Show more (${fullLineCount - previewLineCount} more lines)`;
-    }
-}
