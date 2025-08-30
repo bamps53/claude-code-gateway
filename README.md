@@ -7,7 +7,7 @@ FastAPI proxy gateway for logging Claude Code ↔ Anthropic API requests.
 ```bash
 # Install and run
 uv sync
-uv run python main.py
+uv run main.py
 
 # Configure Claude Code
 export ANTHROPIC_BASE_URL=http://localhost:8000
@@ -17,10 +17,16 @@ export ANTHROPIC_BASE_URL=http://localhost:8000
 
 ```bash
 # Custom port and log directory
-uv run python main.py --port 3000 --log-dir /path/to/logs
+uv run main.py --port 3000 --log-dir /path/to/logs
+
+# Enable CLAUDE.md prompt modification (enforces strict adherence to CLAUDE.md instructions)
+uv run main.py --modify-prompt
+
+# All options
+uv run main.py --port 3000 --log-dir /path/to/logs --max-logs-per-session 10 --modify-prompt
 
 # Help
-uv run python main.py --help
+uv run main.py --help
 ```
 
 ## Logs

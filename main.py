@@ -379,10 +379,14 @@ async def proxy_request(request: Request, path: str):
     headers = dict(request.headers)
     body = await request.body()
 
-    # Modify system prompt for messages API requests
-    modified_body_str = body.decode("utf-8") if body else ""
-    if path.startswith("v1/messages"):
-        modified_body_str = modify_prompt(original_body_str)
+    # Decode request body
+    body_str = body.decode("utf-8") if body else ""
+
+    # Modify system prompt for messages API requests if enabled
+    if path.startswith("v1/messages") and app.state.modify_prompt:
+        modified_body_str = modify_prompt(body_str)
+    else:
+        modified_body_str = body_str
 
     request_data = {
         "method": method,
@@ -409,6 +413,9 @@ def main(
     max_logs_per_session: Annotated[
         int, typer.Option("--max-logs-per-session", "-m", help="Maximum number of logs to keep per session")
     ] = 5,
+    modify_prompt: Annotated[
+        bool, typer.Option("--modify-prompt", help="Enable prompt modification for Claude.md instructions")
+    ] = False,
 ) -> None:
     """
     Claude Code Gateway - A FastAPI proxy server for logging Anthropic API requests.
@@ -420,6 +427,7 @@ def main(
     app.state.logs_dir = Path(log_dir)
     app.state.port = port
     app.state.max_logs_per_session = max_logs_per_session
+    app.state.modify_prompt = modify_prompt
 
     typer.echo(f"🚀 Starting Claude Code Gateway on port {port}")
     typer.echo(f"📁 Logging to directory: {app.state.logs_dir.absolute()}")
