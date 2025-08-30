@@ -31,13 +31,26 @@ uv run main.py --help
 
 ## Logs
 
-Request/response logs are saved as JSON files in `logs/` directory with format:
+Request/response logs are organized in a hierarchical directory structure:
 ```
-YYYYMMDD_HHMMSS.json
+logs/
+├── {user_id_hash}/
+│   └── {timestamp}_{session_id_hash}/
+│       ├── YYYYMMDD_HHMMSS.json
+│       └── YYYYMMDD_HHMMSS.json
+└── unknown_user/
+    └── {timestamp}_unknown_session/
+        └── YYYYMMDD_HHMMSS.json
 ```
 
-Each log contains:
+Features:
+- **Hierarchical organization**: Logs grouped by 8-digit hashed user ID and session ID
+- **Duplicate removal**: Automatically removes duplicate conversations within the same session
+- **Session limits**: Configurable maximum logs per session (default: 5)
+- **Log viewer**: Web interface at `http://localhost:8000/viewer`
+
+Each log file contains:
 - `timestamp`: ISO format timestamp
-- `request`: Method, path, headers, body
-- `response`: Body and headers from Anthropic API
+- `request`: Method, path, headers, body (with JSON parsing)
+- `response`: Body and headers from Anthropic API (with JSON parsing)
 - `status_code`: HTTP status code
