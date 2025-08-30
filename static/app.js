@@ -3,16 +3,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatContainer = document.getElementById("chat-container");
     let activeLog = null;
 
-    // ログファイルの一覧を取得してサイドバーに表示
+    // Fetch log files list and display in sidebar
     async function fetchLogs() {
         try {
             const response = await fetch("/viewer/api/logs");
             if (!response.ok) throw new Error("Failed to fetch logs");
             const logs = await response.json();
             
-            logList.innerHTML = ""; // リストをクリア
+            logList.innerHTML = ""; // Clear the list
             
-            // ログを階層構造でグループ化
+            // Group logs in hierarchical structure
             const logGroups = {};
             logs.forEach(log => {
                 const pathParts = log.path.split('/');
@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     logGroups[userId][sessionId].push(log);
                 } else {
-                    // フラット構造のログ（下位互換）
+                    // Flat structure logs (backward compatibility)
                     if (!logGroups['legacy']) {
                         logGroups['legacy'] = { 'files': [] };
                     }
@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
             
-            // 階層構造でHTML生成
+            // Generate HTML with hierarchical structure
             Object.keys(logGroups).sort().reverse().forEach(userId => {
                 const userDiv = document.createElement("div");
                 userDiv.className = "log-user-group";
@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const deleteButton = document.createElement("button");
                     deleteButton.innerHTML = "🗑️";
                     deleteButton.className = "delete-session-button";
-                    deleteButton.title = "セッションを削除";
+                    deleteButton.title = "Delete Session";
                     deleteButton.addEventListener("click", (e) => {
                         e.stopPropagation();
                         deleteSession(userId, sessionId, sessionDiv);
@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         const link = document.createElement("a");
                         link.href = `#${log.path}`;
                         
-                        // ファイル名から日時をパース
+                        // Parse date and time from filename
                         const match = log.filename.match(/(\d{8})_(\d{6})\.json/);
                         if (match) {
                             const [, dateStr, timeStr] = match;
@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         link.dataset.path = log.path;
                         link.addEventListener("click", (e) => {
                             e.preventDefault();
-                            window.location.hash = log.path; // URLハッシュを更新
+                            window.location.hash = log.path; // Update URL hash
                         });
                         fileList.appendChild(link);
                     });
@@ -113,13 +113,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 logList.appendChild(userDiv);
             });
             
-            // URLハッシュの変更を監視
+            // Monitor URL hash changes
             window.addEventListener('hashchange', () => {
                 const path = window.location.hash.substring(1);
                 if (path) loadLog(path);
             });
 
-            // 初期読み込み時にURLハッシュを確認
+            // Check URL hash on initial load
             if (window.location.hash) {
                 const path = window.location.hash.substring(1);
                 if (logs.some(log => log.path === path || log.filename === path)) {
@@ -132,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // 特定のログを読み込んでチャットUIを生成
+    // Load specific log and generate chat UI
     async function loadLog(path) {
         if (activeLog) {
             activeLog.classList.remove("active");
@@ -148,15 +148,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!response.ok) throw new Error(`Failed to fetch log: ${path}`);
             const data = await response.json();
             
-            chatContainer.innerHTML = ""; // コンテナをクリア
+            chatContainer.innerHTML = ""; // Clear container
 
-            // messagesが存在しない場合の処理
+            // Handle cases where messages don't exist
             if (!data.request?.body?.messages) {
                 chatContainer.innerHTML = '<div class="welcome-message">No messages found in this log.</div>';
                 return;
             }
 
-            // System promptが存在する場合、最初に表示（デフォルトで折りたたみ）
+            // Display system prompt first if it exists (collapsed by default)
             if (data.request?.body?.system && Array.isArray(data.request.body.system)) {
                 const systemDiv = document.createElement("div");
                 systemDiv.classList.add("message", "system");
@@ -182,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            // Toolsが存在する場合、system promptの後に表示（デフォルトで折りたたみ）
+            // Display tools after system prompt if they exist (collapsed by default)
             if (data.request?.body?.tools && Array.isArray(data.request.body.tools)) {
                 const toolsDiv = document.createElement("div");
                 toolsDiv.classList.add("message", "tools");
@@ -192,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     toolsHtml += `<div class="tool-item">`;
                     toolsHtml += `<div class="tool-header">${index + 1}. <strong>${tool.name}</strong></div>`;
                     if (tool.description) {
-                        // 改行を<br>に変換してそのまま表示
+                        // Convert newlines to <br> tags and display as is
                         const description = tool.description.split('\n').join('<br>');
                         toolsHtml += `<div class="tool-description">${description}</div>`;
                     }
@@ -216,11 +216,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 let combinedContent = "";
 
                 if (typeof msg.content === 'string') {
-                    // contentが文字列の場合
+                    // When content is a string
                     messageDiv.classList.add("message", msg.role);
                     combinedContent = msg.content;
                 } else if (Array.isArray(msg.content)) {
-                    // contentが配列の場合
+                    // When content is an array
                     const isToolResult = msg.content.some(part => part.type === "tool_result");
                     const roleClass = isToolResult ? 'tool' : msg.role;
                     messageDiv.classList.add("message", roleClass);
@@ -247,23 +247,23 @@ document.addEventListener("DOMContentLoaded", () => {
                             let resultContent = '';
                             
                             if (Array.isArray(part.content)) {
-                                // contentが配列の場合、各要素を処理
+                                // When content is an array, process each element
                                 part.content.forEach(item => {
                                     if (item.type === "image" && item.source && item.source.type === "base64" && item.source.data) {
-                                        // 画像の場合
+                                        // For images
                                         resultContent += `
                                             <div class="image-container">
                                                 <img src="data:${item.source.media_type || 'image/png'};base64,${item.source.data}" alt="Tool Result Image" />
                                             </div>`;
                                     } else {
-                                        // その他の場合はJSON表示
+                                        // For other cases, display as JSON
                                         const itemStr = JSON.stringify(item, null, 2);
                                         const escapedItem = itemStr.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                                         resultContent += `<pre>${escapedItem}</pre>`;
                                     }
                                 });
                             } else {
-                                // contentが文字列または他のオブジェクトの場合は既存の処理
+                                // For string or other object content, use existing processing
                                 const content = typeof part.content === 'string' ? part.content : JSON.stringify(part.content, null, 2);
                                 const escapedContent = content.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                                 resultContent = escapedContent;
@@ -277,19 +277,19 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     });
                 } else {
-                    // contentが想定外の型の場合もデバッグ表示
+                    // Debug display for unexpected content types
                     console.warn('Unexpected content type:', typeof msg.content, msg.content);
                     messageDiv.classList.add("message", msg.role);
                     combinedContent = `[Unexpected content type: ${typeof msg.content}] ${JSON.stringify(msg.content)}`;
                 }
                 
-                // combinedContentが空の場合もデバッグ表示
+                // Debug display for empty combinedContent
                 if (!combinedContent.trim()) {
                     console.warn('Empty content for message:', msg);
                     combinedContent = '[Empty content]';
                 }
                 
-                // marked.jsでMarkdownをHTMLに変換
+                // Convert Markdown to HTML using marked.js
                 messageDiv.innerHTML = marked.parse(combinedContent.trim());
                 chatContainer.appendChild(messageDiv);
             });
@@ -299,36 +299,36 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // 更新ボタンのイベントリスナー
+    // Event listener for refresh button
     const refreshButton = document.getElementById("refresh-logs");
     refreshButton.addEventListener("click", () => {
         fetchLogs();
     });
 
-    // セッション削除機能
+    // Session deletion functionality
     async function deleteSession(userId, sessionId, sessionDiv) {
-        if (!confirm('このセッションを削除しますか？この操作は取り消せません。')) {
+        if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
             return;
         }
         
-        // sessionIdから実際のフォルダ名を特定する必要がある
-        // フォルダ名は "timestamp_sessionId" の形式
+        // Need to identify the actual folder name from sessionId
+        // Folder name format is "timestamp_sessionId"
         const sessionFolders = sessionDiv.parentElement.querySelectorAll('.log-session-group');
         let sessionFolder = null;
         
-        // 現在のsessionDivに対応するフォルダ名を特定
-        // session headerからsessionIdを抽出し、ログファイルのパスから実際のフォルダ名を取得
+        // Identify folder name corresponding to current sessionDiv
+        // Extract sessionId from session header and get actual folder name from log file paths
         const fileLinks = sessionDiv.querySelectorAll('.log-file-list a');
         if (fileLinks.length > 0) {
             const firstFilePath = fileLinks[0].dataset.path;
             const pathParts = firstFilePath.split('/');
             if (pathParts.length >= 2) {
-                sessionFolder = pathParts[1]; // userId/sessionFolder/filename.json の形式
+                sessionFolder = pathParts[1]; // Format: userId/sessionFolder/filename.json
             }
         }
         
         if (!sessionFolder) {
-            alert('セッションの削除に失敗しました。フォルダが見つかりません。');
+            alert('Failed to delete session. Folder not found.');
             return;
         }
         
@@ -338,10 +338,10 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             
             if (response.ok) {
-                // UIからセッションを削除
+                // Remove session from UI
                 sessionDiv.remove();
                 
-                // もしアクティブなログがこのセッションのものだった場合、チャットコンテナをクリア
+                // If active log belongs to this session, clear chat container
                 if (activeLog && fileLinks.length > 0) {
                     const activeLogPath = activeLog.dataset.path;
                     const sessionPaths = Array.from(fileLinks).map(link => link.dataset.path);
@@ -352,60 +352,60 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             } else {
                 const errorData = await response.text();
-                alert('セッションの削除に失敗しました: ' + errorData);
+                alert('Failed to delete session: ' + errorData);
             }
         } catch (error) {
             console.error('Error deleting session:', error);
-            alert('セッションの削除中にエラーが発生しました。');
+            alert('An error occurred while deleting the session.');
         }
     }
 
     fetchLogs();
 });
 
-// ユーザーグループの折りたたみ機能
+// User group collapse functionality
 function toggleUserGroup(userDiv) {
     const userHeader = userDiv.querySelector('.log-user-header');
     const userSessions = userDiv.querySelector('.log-user-sessions');
     
     if (userSessions.classList.contains('collapsed')) {
-        // 展開
+        // Expand
         userSessions.classList.remove('collapsed');
         userHeader.classList.remove('collapsed');
     } else {
-        // 折りたたみ
+        // Collapse
         userSessions.classList.add('collapsed');
         userHeader.classList.add('collapsed');
     }
 }
 
-// セッショングループの折りたたみ機能
+// Session group collapse functionality
 function toggleSessionGroup(sessionDiv) {
     const sessionHeader = sessionDiv.querySelector('.log-session-header');
     const fileList = sessionDiv.querySelector('.log-file-list');
     
     if (fileList.classList.contains('collapsed')) {
-        // 展開
+        // Expand
         fileList.classList.remove('collapsed');
         sessionHeader.classList.remove('collapsed');
     } else {
-        // 折りたたみ
+        // Collapse
         fileList.classList.add('collapsed');
         sessionHeader.classList.add('collapsed');
     }
 }
 
-// コンテンツの展開/折りたたみ機能
+// Content expand/collapse functionality
 function toggleCollapsible(sectionId) {
     const content = document.getElementById(`${sectionId}-content`);
     const arrow = document.getElementById(`${sectionId}-arrow`);
     
     if (content.classList.contains('collapsed')) {
-        // 展開
+        // Expand
         content.classList.remove('collapsed');
         arrow.textContent = '▼';
     } else {
-        // 折りたたみ
+        // Collapse
         content.classList.add('collapsed');
         arrow.textContent = '▶';
     }

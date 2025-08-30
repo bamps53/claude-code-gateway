@@ -92,17 +92,17 @@ def modify_prompt(body: str) -> str:
         # But you can modify second prompt as you want.
         # Example:
         # if len(parsed_body["system"]) == 2:
-        #     parsed_body["system"][1]['text'] = "常に関西弁で回答すること。"
+        #     parsed_body["system"][1]['text'] = "ONLY USE SERENA MCP TOOLS"
         pass
 
     if "messages" in parsed_body:
         for message in parsed_body["messages"]:
-            # ただの文字列の場合は続行
+            # Continue if it's just a string
             if isinstance(message["content"], str):
                 continue
 
             for content in message["content"]:
-                # thinkingのケースは続行
+                # Continue for thinking cases
                 if "text" not in content:
                     continue
 
