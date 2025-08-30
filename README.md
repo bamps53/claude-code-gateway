@@ -23,11 +23,27 @@ uv run python main.py
 export ANTHROPIC_BASE_URL=http://localhost:8000
 ```
 
-## Configuration
+## CLI Options
 
-The server runs on port 8000 by default. To use a different port:
+The gateway uses Typer for a modern CLI experience with the following options:
+
 ```bash
-PORT=3000 uv run python main.py
+# Basic usage (default port 8000, logs to ./logs)
+uv run python main.py
+
+# Custom port
+uv run python main.py --port 3000
+uv run python main.py -p 3000
+
+# Custom log directory
+uv run python main.py --log-dir /path/to/logs
+uv run python main.py -l /path/to/logs
+
+# Combined options
+uv run python main.py --port 3000 --log-dir /var/log/claude-gateway
+
+# Help
+uv run python main.py --help
 ```
 
 ## Architecture
@@ -65,3 +81,4 @@ uv run ruff check .
 - **FastAPI**: Web framework and request handling
 - **aiohttp**: HTTP client for upstream requests
 - **uvicorn**: ASGI server
+- **typer**: Modern CLI framework with rich help and validation
