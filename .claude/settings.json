@@ -1,0 +1,98 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude --version)",
+      "Bash(claude doctor)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(rm -fr:*)",
+      "Bash(rm -fR:*)",
+      "Bash(rm -Rf:*)",
+      "Bash(sudo rm -rf:*)",
+      "Bash(sudo rm -fr:*)",
+      "Bash(sudo rm -fR:*)",
+      "Bash(sudo rm -Rf:*)",
+      "Bash(mv /* /dev/null)",
+      "Bash(mv ~ /dev/null)",
+      "Bash(python -c 'import os; os.system(\"rm -rf /\")')",
+      "Bash(perl -e 'unlink glob \"/*\"')",
+      "Bash(find / -delete)",
+      "Bash(find ~ -delete)",
+      "Bash(find . -delete)",
+      "Bash(find / -exec rm -rf {} \\;)",
+      "Bash(find ~ -exec rm -rf {} \\;)",
+      "Bash(find / -exec rm {} \\;)",
+      "Bash(find ~ -exec rm {} \\;)",
+      "Bash(shred -vfz /dev/sda)",
+      "Bash(shred -vfz /dev/sdb)",
+      "Bash(cat /dev/urandom > /dev/mem)",
+      "Bash(yes | rm -rf /)",
+      "Bash(yes | rm -rf ~)",
+      "Bash(kill -9 -1)",
+      "Bash(killall -9 *)",
+      "Bash(pkill -9 -f .)",
+      "Bash(shutdown -h now)",
+      "Bash(shutdown -r now)",
+      "Bash(poweroff)",
+      "Bash(reboot)",
+      "Bash(halt)",
+      "Bash(systemctl poweroff)",
+      "Bash(systemctl reboot)",
+      "Bash(systemctl halt)",
+      "Bash(crontab -r)",
+      "Bash(format c:)",
+      "Bash(format /)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r 'if .tool_input.command | test(\"rm -rf|dd if=|:(){ :|:& };:\") then {\"decision\": \"block\", \"reason\": \"危険なコマンドは実行できません。別の方法を検討してください。\"} else empty end'"
+          },
+          {
+            "type": "command",
+            "command": "jq -r 'if .tool_input.command | test(\"^git (commit|push)\") then if (.tool_input.command | test(\"--no-verify\") | not) then {\"decision\": \"block\", \"reason\": \"コミット前にテストを実行してください。`uv run pytest`を先に実行するか、本当に必要な場合は--no-verifyを付けてください。\"} else empty end else empty end'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path | select(endswith(\".py\"))' | xargs -r uv run ruff format"
+          },
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path | select(endswith(\".py\"))' | xargs -r uv run ruff check --fix"
+          }
+        ]
+      }
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "serena"
+  ],
+    "env": {
+        "CLAUDE_CODE_AUTO_CONNECT_IDE": "false",
+        "CLAUDE_CODE_IDE_SKIP_AUTO_INSTALL": "true",
+        "CLAUDE_CODE_IDE_SKIP_VALID_CHECK": "true",
+        "CLAUDE_CODE_ENABLE_TELEMETRY": "false",
+        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "true",
+        "DISABLE_ERROR_REPORTING": "true",
+        "DISABLE_TELEMETRY": "true",
+        "DISABLE_AUTOUPDATER": "true",
+        "DISABLE_MICROCOMPACT": "true"
+    }
+}

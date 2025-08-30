@@ -1,0 +1,195 @@
+:root {
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+
+    --bg-main: #f7f8fa;
+    --bg-sidebar: #ffffff;
+    --bg-user-message: #4a90e2;
+    --bg-assistant-message: #e9ebee;
+    --bg-tool-message: #f6f7f9;
+    --bg-code: #282c34;
+    --bg-error: #fff1f0;
+
+    --text-light: #ffffff;
+    --text-dark: #1c1d21;
+    --text-muted: #606770;
+    --text-code: #abb2bf;
+    --text-error: #d93025;
+
+    --border-primary: #dddfe2;
+    --border-secondary: #ced0d4;
+    --border-error: #f5c6cb;
+    
+    --brand-primary: #4a90e2;
+}
+
+body {
+    font-family: var(--font-sans);
+    margin: 0;
+    background-color: var(--bg-main);
+    color: var(--text-dark);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 280px;
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border-primary);
+    padding: 1rem;
+    overflow-y: auto;
+}
+.sidebar h1 {
+    font-size: 1.5rem;
+    margin: 0 0 1rem;
+}
+#log-list a {
+    display: block;
+    padding: 0.6rem 0.8rem;
+    text-decoration: none;
+    color: var(--text-muted);
+    border-radius: 8px;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+#log-list a:hover {
+    background-color: var(--bg-assistant-message);
+}
+#log-list a.active {
+    background-color: var(--brand-primary);
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+/* Content Area */
+.content {
+    flex-grow: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+#chat-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+.welcome-message {
+    text-align: center;
+    color: var(--text-muted);
+    margin-top: 4rem;
+    font-size: 1.1rem;
+}
+
+/* Messages */
+.message {
+    padding: 0.8rem 1.2rem;
+    border-radius: 1.25rem;
+    margin-bottom: 0.75rem;
+    max-width: 90%;
+    line-height: 1.5;
+    word-wrap: break-word;
+    display: flex;
+    flex-direction: column;
+}
+.message p:first-child { margin-top: 0; }
+.message p:last-child { margin-bottom: 0; }
+.message a { color: inherit; }
+
+.user {
+    background-color: var(--bg-user-message);
+    color: var(--text-light);
+    margin-left: auto;
+    align-self: flex-end;
+}
+.assistant {
+    background-color: var(--bg-assistant-message);
+    color: var(--text-dark);
+    margin-right: auto;
+    align-self: flex-start;
+}
+.tool { /* For tool_result messages */
+    background-color: var(--bg-tool-message);
+    border: 1px solid var(--border-secondary);
+    color: var(--text-muted);
+    margin: 0.5rem auto;
+    align-self: center;
+    width: 100%;
+    max-width: 100%;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+/* Tool-specific styling */
+.tool-call {
+    background-color: rgba(255, 255, 255, 0.7);
+    border: 1px solid var(--border-secondary);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+}
+.tool-call strong {
+    color: var(--text-dark);
+    font-weight: 600;
+}
+.tool-call pre {
+    margin: 0.5rem 0 0;
+}
+
+.tool-result {
+    margin-top: 0.5rem;
+}
+.tool-result strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-muted);
+}
+.tool-result p {
+    font-family: var(--font-mono);
+    white-space: pre-wrap;
+    background: var(--bg-sidebar);
+    padding: 0.75rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-secondary);
+}
+.tool-result.error p {
+    background-color: var(--bg-error);
+    border-color: var(--border-error);
+    color: var(--text-error);
+}
+
+/* Code blocks */
+pre, code {
+    font-family: var(--font-mono);
+}
+pre {
+    background-color: var(--bg-code);
+    color: var(--text-code);
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.9rem;
+}
+.message > pre {
+    margin: 0.5rem 0;
+}
+
+/* Image display */
+.image-container {
+    margin: 0.5rem 0;
+    text-align: center;
+}
+.image-container img {
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 8px;
+    border: 1px solid var(--border-secondary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
