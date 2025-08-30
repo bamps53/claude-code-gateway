@@ -17,8 +17,8 @@ ANTHROPIC_API_URL = "https://api.anthropic.com"
 
 def save_request_response(logs_dir: Path, request_data: dict, response_data: dict, status_code: int) -> None:
     """Save request and response data to JSON file with timestamp."""
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S_%f%z")
-    filename = f"claude_request_{timestamp}.json"
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}.json"
 
     log_data = {
         "timestamp": datetime.now(timezone.utc).isoformat(),

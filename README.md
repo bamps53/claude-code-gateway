@@ -57,7 +57,7 @@ uv run python main.py --help
 
 Logs are saved in `logs/` directory with the format:
 ```
-claude_request_YYYY-MM-DDTHH-MM-SS_microseconds+timezone.json
+YYYYMMDD_HHMMSS.json
 ```
 
 Each log file contains:
