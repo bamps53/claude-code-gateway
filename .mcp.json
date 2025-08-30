@@ -10,8 +10,8 @@
         "start-mcp-server",
         "--context",
         "ide-assistant",
-        "--project",
-        "/home/daisuke/projects/sam2_dev"
+        "--enable-web-dashboard",
+        "false"
       ],
       "env": {}
     },

@@ -33,7 +33,6 @@
       "Bash(yes | rm -rf /)",
       "Bash(yes | rm -rf ~)",
       "Bash(kill -9 -1)",
-      "Bash(killall -9 *)",
       "Bash(pkill -9 -f .)",
       "Bash(shutdown -h now)",
       "Bash(shutdown -r now)",
@@ -92,7 +91,7 @@
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "true",
         "DISABLE_ERROR_REPORTING": "true",
         "DISABLE_TELEMETRY": "true",
-        "DISABLE_AUTOUPDATER": "true",
-        "DISABLE_MICROCOMPACT": "true"
+        "DISABLE_MICROCOMPACT": "true",
+        "MAX_THINKING_TOKENS": "31999"
     }
 }

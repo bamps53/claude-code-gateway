@@ -11,43 +11,104 @@ document.addEventListener("DOMContentLoaded", () => {
             const logs = await response.json();
             
             logList.innerHTML = ""; // リストをクリア
+            
+            // ログを階層構造でグループ化
+            const logGroups = {};
             logs.forEach(log => {
-                const link = document.createElement("a");
-                link.href = `#${log.filename}`;
-                // ファイル名から日時をパース
-                const match = log.filename.match(/(\d{8})_(\d{6})\.json/);
-                if (match) {
-                    const [, dateStr, timeStr] = match;
-                    const year = dateStr.slice(0, 4);
-                    const month = dateStr.slice(4, 6);
-                    const day = dateStr.slice(6, 8);
-                    const hour = timeStr.slice(0, 2);
-                    const minute = timeStr.slice(2, 4);
-                    const second = timeStr.slice(4, 6);
-                    const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`);
-                    link.textContent = date.toLocaleString('ja-JP');
+                const pathParts = log.path.split('/');
+                if (pathParts.length >= 2) {
+                    const userId = pathParts[0];
+                    const sessionId = pathParts[1];
+                    if (!logGroups[userId]) {
+                        logGroups[userId] = {};
+                    }
+                    if (!logGroups[userId][sessionId]) {
+                        logGroups[userId][sessionId] = [];
+                    }
+                    logGroups[userId][sessionId].push(log);
                 } else {
-                    link.textContent = log.filename;
+                    // フラット構造のログ（下位互換）
+                    if (!logGroups['legacy']) {
+                        logGroups['legacy'] = { 'files': [] };
+                    }
+                    logGroups['legacy']['files'].push(log);
                 }
-                link.dataset.filename = log.filename;
-                link.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    window.location.hash = log.filename; // URLハッシュを更新
+            });
+            
+            // 階層構造でHTML生成
+            Object.keys(logGroups).sort().forEach(userId => {
+                const userDiv = document.createElement("div");
+                userDiv.className = "log-user-group";
+                
+                const userHeader = document.createElement("h3");
+                userHeader.textContent = userId;
+                userHeader.className = "log-user-header";
+                userHeader.addEventListener("click", () => toggleUserGroup(userDiv));
+                userDiv.appendChild(userHeader);
+                
+                const userSessionsContainer = document.createElement("div");
+                userSessionsContainer.className = "log-user-sessions";
+                
+                Object.keys(logGroups[userId]).sort().forEach(sessionId => {
+                    const sessionDiv = document.createElement("div");
+                    sessionDiv.className = "log-session-group";
+                    
+                    const sessionHeader = document.createElement("h4");
+                    sessionHeader.textContent = `Session: ${sessionId}`;
+                    sessionHeader.className = "log-session-header";
+                    sessionHeader.addEventListener("click", () => toggleSessionGroup(sessionDiv));
+                    sessionDiv.appendChild(sessionHeader);
+                    
+                    const fileList = document.createElement("div");
+                    fileList.className = "log-file-list";
+                    
+                    logGroups[userId][sessionId].forEach(log => {
+                        const link = document.createElement("a");
+                        link.href = `#${log.path}`;
+                        
+                        // ファイル名から日時をパース
+                        const match = log.filename.match(/(\d{8})_(\d{6})\.json/);
+                        if (match) {
+                            const [, dateStr, timeStr] = match;
+                            const year = dateStr.slice(0, 4);
+                            const month = dateStr.slice(4, 6);
+                            const day = dateStr.slice(6, 8);
+                            const hour = timeStr.slice(0, 2);
+                            const minute = timeStr.slice(2, 4);
+                            const second = timeStr.slice(4, 6);
+                            const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`);
+                            link.textContent = date.toLocaleString('ja-JP');
+                        } else {
+                            link.textContent = log.filename;
+                        }
+                        
+                        link.dataset.path = log.path;
+                        link.addEventListener("click", (e) => {
+                            e.preventDefault();
+                            window.location.hash = log.path; // URLハッシュを更新
+                        });
+                        fileList.appendChild(link);
+                    });
+                    
+                    sessionDiv.appendChild(fileList);
+                    userSessionsContainer.appendChild(sessionDiv);
                 });
-                logList.appendChild(link);
+                
+                userDiv.appendChild(userSessionsContainer);
+                logList.appendChild(userDiv);
             });
             
             // URLハッシュの変更を監視
             window.addEventListener('hashchange', () => {
-                const filename = window.location.hash.substring(1);
-                if (filename) loadLog(filename);
+                const path = window.location.hash.substring(1);
+                if (path) loadLog(path);
             });
 
             // 初期読み込み時にURLハッシュを確認
             if (window.location.hash) {
-                const filename = window.location.hash.substring(1);
-                if (logs.some(log => log.filename === filename)) {
-                    loadLog(filename);
+                const path = window.location.hash.substring(1);
+                if (logs.some(log => log.path === path || log.filename === path)) {
+                    loadLog(path);
                 }
             }
         } catch (error) {
@@ -57,19 +118,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // 特定のログを読み込んでチャットUIを生成
-    async function loadLog(filename) {
+    async function loadLog(path) {
         if (activeLog) {
             activeLog.classList.remove("active");
         }
-        const newActiveLog = logList.querySelector(`a[data-filename="${filename}"]`);
+        const newActiveLog = logList.querySelector(`a[data-path="${path}"]`);
         if (newActiveLog) {
             newActiveLog.classList.add("active");
             activeLog = newActiveLog;
         }
 
         try {
-            const response = await fetch(`/viewer/api/logs/${filename}`);
-            if (!response.ok) throw new Error(`Failed to fetch log: ${filename}`);
+            const response = await fetch(`/viewer/api/logs/${path}`);
+            if (!response.ok) throw new Error(`Failed to fetch log: ${path}`);
             const data = await response.json();
             
             chatContainer.innerHTML = ""; // コンテナをクリア
@@ -78,6 +139,84 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!data.request?.body?.messages) {
                 chatContainer.innerHTML = '<div class="welcome-message">No messages found in this log.</div>';
                 return;
+            }
+
+            // System promptが存在する場合、最初に表示（デフォルトで折りたたみ）
+            if (data.request?.body?.system && Array.isArray(data.request.body.system)) {
+                const systemDiv = document.createElement("div");
+                systemDiv.classList.add("message", "system");
+                
+                let systemContent = "";
+                data.request.body.system.forEach(part => {
+                    if (part.type === "text" && part.text) {
+                        systemContent += part.text + "\n";
+                    }
+                });
+                
+                if (systemContent.trim()) {
+                    const systemId = "system-prompt";
+                    systemDiv.innerHTML = `
+                        <div class="collapsible-header" onclick="toggleCollapsible('${systemId}')">
+                            <strong>📋 System Prompt</strong> <span class="collapse-arrow" id="${systemId}-arrow">▶</span>
+                        </div>
+                        <div class="collapsible-content collapsed" id="${systemId}-content">
+                            ${marked.parse(systemContent.trim())}
+                        </div>
+                    `;
+                    chatContainer.appendChild(systemDiv);
+                }
+            }
+
+            // Toolsが存在する場合、system promptの後に表示（デフォルトで折りたたみ）
+            if (data.request?.body?.tools && Array.isArray(data.request.body.tools)) {
+                const toolsDiv = document.createElement("div");
+                toolsDiv.classList.add("message", "tools");
+                
+                let toolsHtml = "";
+                data.request.body.tools.forEach((tool, index) => {
+                    toolsHtml += `<div class="tool-item">`;
+                    toolsHtml += `<div class="tool-header">${index + 1}. <strong>${tool.name}</strong></div>`;
+                    if (tool.description) {
+                        // 改行を<br>に変換
+                        const lines = tool.description.split('\n');
+                        const previewLines = 5;
+                        
+                        if (lines.length > previewLines) {
+                            // 長い説明の場合：折りたたみ機能付き
+                            const previewDescription = lines.slice(0, previewLines).join('<br>');
+                            const fullDescription = lines.join('<br>');
+                            const toolId = `tool-${index}`;
+                            
+                            toolsHtml += `<div class="tool-description">
+                                <div class="tool-desc-preview" id="${toolId}-preview">
+                                    ${previewDescription}
+                                </div>
+                                <div class="tool-desc-full" id="${toolId}-full" style="display: none;">
+                                    ${fullDescription}
+                                </div>
+                                <button class="tool-expand-btn" onclick="toggleToolDescription('${toolId}')" id="${toolId}-btn">
+                                    Show more (${lines.length - previewLines} more lines)
+                                </button>
+                            </div>`;
+                        } else {
+                            // 短い説明の場合：そのまま表示
+                            const description = lines.join('<br>');
+                            toolsHtml += `<div class="tool-description">${description}</div>`;
+                        }
+                    }
+                    toolsHtml += `</div>`;
+                });
+                
+                const toolsId = "available-tools";
+                toolsDiv.innerHTML = `
+                    <div class="collapsible-header" onclick="toggleCollapsible('${toolsId}')">
+                        <strong>🔧 Available Tools (${data.request.body.tools.length})</strong> <span class="collapse-arrow" id="${toolsId}-arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content collapsed" id="${toolsId}-content">
+                        ${toolsHtml}
+                    </div>
+                `;
+                chatContainer.appendChild(toolsDiv);
             }
 
             data.request.body.messages.forEach(msg => {
@@ -95,7 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     messageDiv.classList.add("message", roleClass);
 
                     msg.content.forEach(part => {
-                        console.log('Processing content part:', part.type, part.text?.substring(0, 100));
+                        console.log('Processing content part:', part.type, part.text);
                         if (part.type === "text" && part.text.trim()) {
                             combinedContent += part.text + "\n";
                         } else if (part.type === "image") {
@@ -170,3 +309,72 @@ document.addEventListener("DOMContentLoaded", () => {
 
     fetchLogs();
 });
+
+// ユーザーグループの折りたたみ機能
+function toggleUserGroup(userDiv) {
+    const userHeader = userDiv.querySelector('.log-user-header');
+    const userSessions = userDiv.querySelector('.log-user-sessions');
+    
+    if (userSessions.classList.contains('collapsed')) {
+        // 展開
+        userSessions.classList.remove('collapsed');
+        userHeader.classList.remove('collapsed');
+    } else {
+        // 折りたたみ
+        userSessions.classList.add('collapsed');
+        userHeader.classList.add('collapsed');
+    }
+}
+
+// セッショングループの折りたたみ機能
+function toggleSessionGroup(sessionDiv) {
+    const sessionHeader = sessionDiv.querySelector('.log-session-header');
+    const fileList = sessionDiv.querySelector('.log-file-list');
+    
+    if (fileList.classList.contains('collapsed')) {
+        // 展開
+        fileList.classList.remove('collapsed');
+        sessionHeader.classList.remove('collapsed');
+    } else {
+        // 折りたたみ
+        fileList.classList.add('collapsed');
+        sessionHeader.classList.add('collapsed');
+    }
+}
+
+// コンテンツの展開/折りたたみ機能
+function toggleCollapsible(sectionId) {
+    const content = document.getElementById(`${sectionId}-content`);
+    const arrow = document.getElementById(`${sectionId}-arrow`);
+    
+    if (content.classList.contains('collapsed')) {
+        // 展開
+        content.classList.remove('collapsed');
+        arrow.textContent = '▼';
+    } else {
+        // 折りたたみ
+        content.classList.add('collapsed');
+        arrow.textContent = '▶';
+    }
+}
+
+// Tools説明の展開/折りたたみ機能
+function toggleToolDescription(toolId) {
+    const preview = document.getElementById(`${toolId}-preview`);
+    const full = document.getElementById(`${toolId}-full`);
+    const btn = document.getElementById(`${toolId}-btn`);
+    
+    if (full.style.display === 'none') {
+        // 展開
+        preview.style.display = 'none';
+        full.style.display = 'block';
+        btn.textContent = 'Show less';
+    } else {
+        // 折りたたみ
+        preview.style.display = 'block';
+        full.style.display = 'none';
+        const previewLineCount = preview.innerHTML.split('<br>').length;
+        const fullLineCount = full.innerHTML.split('<br>').length;
+        btn.textContent = `Show more (${fullLineCount - previewLineCount} more lines)`;
+    }
+}
